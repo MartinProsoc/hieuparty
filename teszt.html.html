@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hieu Party - V.I.P. Belépés</title>
+    <style>
+        /* Alapvető sötét, neon stílus */
+        body {
+            margin: 0;
+            font-family: 'Courier New', Courier, monospace;
+            background-color: #0a0a0a;
+            color: #ffffff;
+            overflow: hidden; /* Ne lehessen görgetni a jelszó képernyőn */
+        }
+
+        /* Középre igazított tároló a jelszóhoz */
+        .gate-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            text-align: center;
+            background: radial-gradient(circle, #1a1a1a 0%, #000000 100%);
+        }
+
+        /* Neon effektek */
+        h1.neon-pink {
+            font-size: 3rem;
+            color: #ff007f;
+            text-shadow: 0 0 10px #ff007f, 0 0 20px #ff007f, 0 0 40px #ff007f;
+            margin-bottom: 10px;
+        }
+
+        h1.neon-blue {
+            font-size: 4rem;
+            color: #00f3ff;
+            text-shadow: 0 0 10px #00f3ff, 0 0 20px #00f3ff;
+            text-transform: uppercase;
+            letter-spacing: 5px;
+        }
+
+        /* Űrlap elemek dizájnja */
+        input[type="password"] {
+            padding: 15px;
+            font-size: 1.2rem;
+            background: #111;
+            border: 2px solid #ff007f;
+            color: #fff;
+            border-radius: 8px;
+            outline: none;
+            margin-top: 20px;
+            text-align: center;
+            transition: 0.3s;
+        }
+
+        input[type="password"]:focus {
+            box-shadow: 0 0 15px #ff007f;
+        }
+
+        button {
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            background: #ff007f;
+            border: none;
+            color: #fff;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 20px;
+            font-weight: bold;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background: #cc0066;
+            box-shadow: 0 0 20px #ff007f;
+            transform: scale(1.05);
+        }
+
+        .error-message {
+            color: #ff3333;
+            margin-top: 15px;
+            font-weight: bold;
+            display: none;
+            text-shadow: 0 0 5px #ff3333;
+        }
+
+        /* Fő tartalom (rejtve alapértelmezetten) */
+        #main-content {
+            display: none;
+            padding: 40px 20px;
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .party-card {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 30px;
+            border-radius: 15px;
+            border: 1px solid #333;
+            box-shadow: 0 10px 30px rgba(0, 243, 255, 0.1);
+            margin-top: 30px;
+        }
+
+        .party-card h3 {
+            font-size: 1.5rem;
+            margin: 15px 0;
+        }
+
+        .highlight {
+            color: #00f3ff;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ==================== JELSZÓ KÉPERNYŐ ==================== -->
+    <div id="gate-screen" class="gate-container">
+        <h1 class="neon-pink">V.I.P. BELÉPÉS</h1>
+        <p>A Hieu Party egy szigorúan zártkörű esemény.<br>Kérlek, azonosítsd magad!</p>
+        
+        <input type="password" id="secret-password" placeholder="Titkos jelszó...">
+        <button onclick="unlockParty()">Belépés</button>
+        <p id="error-msg" class="error-message">Helytelen jelszó! Nem vagy a listán.</p>
+    </div>
+
+
+    <!-- ==================== FŐOLDAL (A BULI RÉSZLETEI) ==================== -->
+    <div id="main-content">
+        <h1 class="neon-blue">Hieu Party</h1>
+        <h2>Üdvözöllek a belső körben! 🔥</h2>
+        
+        <div class="party-card">
+            <h3>📅 Időpont: <span class="highlight">[IDE JÖN A DÁTUM ÉS ÓRA]</span></h3>
+            <h3>📍 Helyszín: <span class="highlight">[IDE JÖN A PONTOS CÍM]</span></h3>
+            
+            <hr style="border-color: #333; margin: 30px 0;">
+            
+            <p style="font-size: 1.2rem; line-height: 1.6;">
+                Készülj életed bulijára! A belépéshez mindössze jókedvre és a kedvenc italodra lesz szükség.
+            </p>
+            
+            <ul style="list-style: none; padding: 0; font-size: 1.1rem;">
+                <li style="margin: 10px 0;">🎵 <strong>Zene:</strong> Techno / House / R'n'B</li>
+                <li style="margin: 10px 0;">👕 <strong>Dress code:</strong> Fekete vagy Neon (légy kreatív!)</li>
+                <li style="margin: 10px 0;">🍕 <strong>Kaja:</strong> Rágcsálnivaló és pizza lesz, de nyugodtan hozz mást is.</li>
+            </ul>
+        </div>
+    </div>
+
+
+    <!-- ==================== JAVASCRIPT LOGIKA ==================== -->
+    <script>
+        // Itt állíthatod be a jelszót (kisbetű/nagybetű számít!)
+        const CORRECT_PASSWORD = "hieu"; 
+
+        function unlockParty() {
+            const inputVal = document.getElementById('secret-password').value;
+            const errorMsg = document.getElementById('error-msg');
+            const gateScreen = document.getElementById('gate-screen');
+            const mainContent = document.getElementById('main-content');
+
+            if (inputVal === CORRECT_PASSWORD) {
+                // Helyes jelszó: Kapu eltűnik, tartalom megjelenik
+                gateScreen.style.display = 'none';
+                mainContent.style.display = 'block';
+                document.body.style.overflow = 'auto'; // Visszakapcsoljuk a görgetést
+            } else {
+                // Helytelen jelszó
+                errorMsg.style.display = 'block';
+                document.getElementById('secret-password').value = ''; // Mező űrítése
+                
+                // Kis rázkódó effekt a hibás jelszónál
+                gateScreen.animate([
+                    { transform: 'translateX(0px)' },
+                    { transform: 'translateX(-10px)' },
+                    { transform: 'translateX(10px)' },
+                    { transform: 'translateX(0px)' }
+                ], { duration: 150 });
+            }
+        }
+
+        // Kényelmi funkció: "Enter" gombra is működjön a belépés
+        document.getElementById('secret-password').addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                unlockParty();
+            }
+        });
+    </script>
+
+</body>
+</html>
