@@ -1243,6 +1243,11 @@ body.calm .dm-notes text:nth-child(2){transform:translate(-8px,-16px);} body.cal
       <div class="top-row">
         <span id="adminStatsText" style="color:var(--muted);font-size:.85rem;"></span>
         <button class="enter-btn" id="togglePhotoUploadBtn" type="button" style="margin-top:0;"></button>
+        <div class="field"><label for="guestPhotoQuota">Fotók összmérete vendégenként (MB)</label>
+        <input id="guestPhotoQuota" type="number" min="0" step="any" inputmode="decimal" placeholder="Korlátlan" aria-describedby="guestQuotaHint">
+        <small id="guestQuotaHint">Üresen korlátlan. A korábban feltöltött képek is beleszámítanak.</small>
+        <button class="enter-btn" id="saveGuestQuota" type="button">Keret mentése</button>
+        <span id="guestQuotaMsg" role="status"></span></div>
       </div>
       <table id="adminVisitsTable" style="display:none;">
         <thead><tr><th>Név</th><th>Első megnyitás</th><th>Utolsó megnyitás</th><th>Belépett?</th></tr></thead>
@@ -3212,7 +3217,7 @@ body.calm .dm-notes text:nth-child(2){transform:translate(-8px,-16px);} body.cal
           });
           var d = await resp.json();
           if(d && d.ok){
-            m.style.color='var(--gold-soft)'; m.textContent='Fotó feltöltve, köszönjük!';
+            m.style.color='var(--gold-soft)'; m.textContent='Fotó feltöltve, köszönjük!'+(typeof d.remaining==='number' ? ' Szabad kereted: '+(d.remaining/1048576).toLocaleString('hu-HU',{maximumFractionDigits:2})+' MB.' : '');
             refreshPhotos();
           } else if(d && d.error==='unauthorized'){
             sessionExpired();
@@ -3221,6 +3226,10 @@ body.calm .dm-notes text:nth-child(2){transform:translate(-8px,-16px);} body.cal
           } else if(d && d.error==='not_configured'){
             m.style.color='var(--danger)'; m.textContent='A fotófal jelenleg nem elérhető.';
             photoSection.style.display='none';
+          } else if(d && d.error==='photo_quota'){
+            m.style.color='var(--danger)'; m.textContent='Ez a kép már nem fér bele a keretedbe. Szabad hely: '+(d.remaining/1048576).toLocaleString('hu-HU',{maximumFractionDigits:2})+' MB.';
+          } else if(d && d.error==='quota_busy'){
+            m.textContent='A feltöltést nem sikerült lezárni. Próbáld újra.';
           } else if(d && d.error==='uploads_disabled'){
             m.style.color='var(--danger)'; m.textContent='A szervező jelenleg letiltotta a feltöltést.';
             applyPhotoUploadEnabled(false);
@@ -3731,6 +3740,23 @@ body.calm .dm-notes text:nth-child(2){transform:translate(-8px,-16px);} body.cal
         toggleBtn.dataset.enabled = enabled ? '1' : '0';
       }
       renderToggle(d.photoUploadEnabled);
+      const quotaInput=document.getElementById('guestPhotoQuota');
+      const quotaSave=document.getElementById('saveGuestQuota');
+      const quotaMsg=document.getElementById('guestQuotaMsg');
+      quotaInput.value=d.photoQuota==null ? '' : d.photoQuota/1048576;
+      quotaSave.onclick=async function(){
+        if(!quotaInput.reportValidity()) return;
+        const limit=quotaInput.value==='' ? null : Math.round(quotaInput.valueAsNumber*1048576);
+        if(limit!==null && (!Number.isSafeInteger(limit) || limit<0)){quotaMsg.textContent='Érvénytelen méret.';return;}
+        quotaSave.disabled=true;
+        try {
+          const response=await fetch(VERIFY_URL+'/settings/photo-quota',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key,limit})});
+          const result=await response.json();
+          if(!result.ok) throw Error();
+          quotaMsg.textContent=limit===null ? 'Mentve · korlátlan.' : 'Mentve · '+(limit/1048576).toLocaleString('hu-HU')+' MB vendégenként.';
+        } catch {quotaMsg.textContent='Nem sikerült menteni a keretet.';}
+        finally {quotaSave.disabled=false;}
+      };
       toggleBtn.onclick = async function(){
         var next = toggleBtn.dataset.enabled !== '1';
         try{
