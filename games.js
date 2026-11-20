@@ -12,6 +12,47 @@
     if (!response.ok || !data.ok) throw new Error(data.error || "A művelet nem sikerült.");
     return data;
   }
+  async function publish(base,key,form,status) {
+    const data=new FormData(form);
+    const files=data.getAll("files").filter(f=>f.size);
+    const cover=data.get("cover");
+    const payload={id:crypto.randomUUID(), title:data.get("title"), description:data.get("description"), party:data.get("kind")==="party", files:[], cover:null};
+    if(files.length>6 || (payload.party && !files.length)) throw new Error("Szabályzathoz válassz fájlt. Legfeljebb 6 csatolmány adható hozzá.");
+    const headers={"X-Game-Key":key};
+    const post=(action,body)=>api(base+"/games/uploads/"+action,{method:"POST",headers:{...headers,"Content-Type":"application/json"},body:JSON.stringify(body)});
+    const sessions=[];
+    let publishing=false;
+    try {
+      for(const file of [...files,...(cover?.size ? [cover] : [])]) {
+        const image=file===cover;
+        const session=await post("start",{name:file.name,image,type:file.type});
+        sessions.push(session);
+        const parts=[];
+        const MiB=1024*1024;
+        const chunkSize=Math.min(95*MiB,Math.max(8,Math.ceil(file.size/(10000*MiB)))*MiB);
+        for(let start=0;start<file.size;start+=chunkSize) {
+          const number=parts.length+1;
+          const query=new URLSearchParams({id:session.id,uploadId:session.uploadId,number});
+          const body=file.slice(start,start+chunkSize);
+          status.textContent=file.name+" · "+Math.floor(start/file.size*100)+"%";
+          for(let attempt=1;;attempt++) {
+            try {
+              const result=await api(base+"/games/uploads/part?"+query,{method:"POST",headers,body});
+              parts.push(result.part); break;
+            } catch(error) { if(attempt===3) throw error; }
+          }
+        }
+        await post("finish",{...session,parts});
+        if(image) payload.cover=session.id;
+        else payload.files.push({id:session.id,name:file.name});
+      }
+      publishing=true;
+      await post("publish",payload);
+    } catch(error) {
+      if(!publishing) await Promise.allSettled(sessions.map(s=>post("cancel",s)));
+      throw error;
+    }
+  }
   window.partyGames = {
     guest(base, query) {
       const invite = el("invite"), toggle = el("gamesToggle"), panel = el("gamesPane");
@@ -101,9 +142,7 @@
         const msg=el("gameUploadStatus"), button=form.querySelector("button");
         button.disabled=true; msg.textContent="Feltöltés…";
         try {
-          const data=new FormData(form);
-          if(data.getAll("files").length>6 || [...data.values()].reduce((sum,f)=>sum+(f.size||0),0)>16*1024*1024) throw new Error("Legfeljebb 6 csatolmány és összesen 16 MB tölthető fel.");
-          await api(base+"/games/publish",{method:"POST",headers:{"X-Game-Key":key},body:data});
+          await publish(base,key,form,msg);
           form.reset(); msg.textContent="Megjelent a játéktérben.";
         } catch(err){msg.textContent=err.message;}
         finally {button.disabled=false;}
