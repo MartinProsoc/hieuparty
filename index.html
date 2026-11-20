@@ -600,6 +600,7 @@ body.calm .dm-notes text:nth-child(2){transform:translate(-8px,-16px);} body.cal
   html{scroll-behavior:auto;}
 }
 </style>
+<link rel="stylesheet" href="games.css"><script src="games.js"></script>
 </head>
 <body>
 <a href="#gateName" class="skip-link">Ugrás a bejelentkezéshez</a>
@@ -800,6 +801,7 @@ body.calm .dm-notes text:nth-child(2){transform:translate(-8px,-16px);} body.cal
 
 <div id="invite">
   <nav class="userbar" aria-label="Fiók">
+    <button type="button" id="gamesToggle" role="switch" aria-label="Játéktér" aria-controls="gamesPane" aria-checked="false" aria-disabled="true"><span>Meghívó</span><span>Játékok</span></button><span id="gamesHint" role="status"></span>
     <button type="button" class="um-btn" id="userMenuBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="userMenu">
       <span class="um-avatar" id="userbarAvatar" aria-hidden="true"></span><span class="um-name" id="userbarName"></span><span class="um-caret" aria-hidden="true"></span>
     </button>
@@ -820,6 +822,7 @@ body.calm .dm-notes text:nth-child(2){transform:translate(-8px,-16px);} body.cal
       <li role="none"><button type="button" role="menuitem" class="um-logout" id="logoutBtn">Kijelentkezés</button></li>
     </ul>
   </nav>
+  <section id="gamesPane" hidden><p class="hero-eyebrow">Hieu Party</p><h1>Játéktér</h1><div id="gameCards"></div></section>
   <div class="hero">
     <p class="hero-eyebrow" id="heroHello"></p>
     <span class="mark serif" aria-hidden="true">✦</span>
@@ -1278,6 +1281,8 @@ body.calm .dm-notes text:nth-child(2){transform:translate(-8px,-16px);} body.cal
         <tbody id="adminTbody"></tbody>
       </table>
 
+      <section class="game-admin"><h2 class="sub-h">Játéktér</h2><fieldset><legend>Hozzáférések</legend><label><input type="checkbox" id="gameAll" disabled> Minden vendég</label><div id="gameAccess"></div><p id="gameAccessStatus" role="status"></p></fieldset>
+<form id="gamePublish"><h3>Új anyag</h3><label>Típus<select name="kind"><option value="game">Játék</option><option value="party">Party szabályzata</option></select></label><label>Cím<input name="title" required maxlength="80"></label><label>Leírás<textarea name="description" maxlength="2000"></textarea></label><label>Borítókép<input type="file" name="cover" accept="image/png,image/jpeg,image/webp"></label><label>Letölthető fájlok<input type="file" name="files" multiple></label><small>Legfeljebb 6 csatolmány, a borítóval együtt 16 MB.</small><button class="enter-btn">Közzététel</button><p id="gameUploadStatus" role="status"></p></form></section>
       <div class="sub-h">Zenei javaslatok</div>
       <div class="song-list" id="adminSongList"></div>
 
@@ -2094,6 +2099,7 @@ body.calm .dm-notes text:nth-child(2){transform:translate(-8px,-16px);} body.cal
   }
 
   function initInvite(details, profile){
+    partyGames.guest(VERIFY_URL,tq);
     details = details || {};
     profile = profile || {};
     document.getElementById('userbarName').textContent = profile.name || '';
@@ -3286,6 +3292,7 @@ body.calm .dm-notes text:nth-child(2){transform:translate(-8px,-16px);} body.cal
   });
 
   function renderAdminGuests(guests, key){
+    partyGames.admin(VERIFY_URL,key,guests);
     var tbody=document.getElementById('adminTbody');
     tbody.innerHTML = guests.map(function(g){
       return '<tr><td>'+escapeHtml(g.name)+'</td><td>'+escapeHtml(g.response || 'Még nem válaszolt')+'</td><td>'+(g.plusOnes||0)+'</td>'+
