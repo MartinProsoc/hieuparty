@@ -12,12 +12,20 @@
     if (!response.ok || !data.ok) throw new Error(data.error || "A művelet nem sikerült.");
     return data;
   }
-  async function publish(base,key,form,status) {
+  async function publish(base,key,form,status,editing) {
     const data=new FormData(form);
     const files=data.getAll("files").filter(f=>f.size);
     const cover=data.get("cover");
     const payload={id:crypto.randomUUID(), title:data.get("title"), description:data.get("description"), party:data.get("kind")==="party", files:[], cover:null};
-    if(files.length>6 || (payload.party && !files.length)) throw new Error("Szabályzathoz válassz fájlt. Legfeljebb 6 csatolmány adható hozzá.");
+    if(editing) {
+      payload.id=editing.id;
+      payload.version=editing.version;
+      const kept=new Set(data.getAll("keepFile"));
+      payload.files=editing.files.filter(f=>kept.has(f.id));
+      payload.cover=data.has("keepCover") ? editing.cover : null;
+    }
+    const count=files.length+payload.files.length;
+    if(count>6 || (payload.party && !count)) throw new Error("Szabályzathoz válassz fájlt. Legfeljebb 6 csatolmány adható hozzá.");
     const headers={"X-Game-Key":key};
     const post=(action,body)=>api(base+"/games/uploads/"+action,{method:"POST",headers:{...headers,"Content-Type":"application/json"},body:JSON.stringify(body)});
     const sessions=[];
@@ -47,7 +55,7 @@
         else payload.files.push({id:session.id,name:file.name});
       }
       publishing=true;
-      await post("publish",payload);
+      await post(editing ? "edit" : "publish",payload);
     } catch(error) {
       if(!publishing) await Promise.allSettled(sessions.map(s=>post("cancel",s)));
       throw error;
@@ -137,15 +145,66 @@
         controls.set(guest.id,input); label.append(input," "+guest.name); root.append(label);
       }
       all.onchange=()=>change("*",all.checked);
+      let editing=null;
+      const list=el("gameAdminCards"), note=el("gameListStatus"), existing=el("gameExistingFiles");
+      const save=form.querySelector("[type=submit]"), cancel=el("gameCancelEdit");
+      function selectCard(card) {
+        editing=card;
+        form.reset(); existing.replaceChildren();
+        form.querySelector("h3").textContent=card ? "Anyag szerkesztése" : "Új anyag";
+        save.textContent=card ? "Változtatások mentése" : "Közzététel";
+        cancel.hidden=!card;
+        el("gameUploadStatus").textContent="";
+        if(!card) return;
+        form.elements.title.value=card.title;
+        form.elements.description.value=card.description;
+        form.elements.kind.value=card.party ? "party" : "game";
+        function keep(name,value,text) {
+          const label=node("label"), box=node("input");
+          box.type="checkbox"; box.name=name; box.value=value; box.checked=true;
+          label.append(box," "+text); existing.append(label);
+        }
+        if(card.cover) keep("keepCover",card.cover,"Jelenlegi borítókép megtartása");
+        for(const f of card.files) keep("keepFile",f.id,"Megtartás · "+f.name);
+        form.elements.title.focus();
+      }
+      cancel.onclick=()=>selectCard(null);
+      selectCard(null);
+      async function refreshCards() {
+        try {
+          const {items}=await api(base+"/games/uploads/catalog",{method:"POST",headers:{"X-Game-Key":key},body:"{}"});
+          list.replaceChildren(); note.textContent=items.length ? "" : "Még nincs közzétett anyag.";
+          for(const item of items) {
+            const row=node("article"), heading=node("h4",item.title);
+            const edit=node("button","Szerkesztés","del-btn"), remove=node("button","Törlés","del-btn");
+            edit.type=remove.type="button";
+            edit.onclick=()=>{if(!save.disabled) selectCard(item);};
+            remove.onclick=async()=>{
+              if(save.disabled || !confirm("Végleg törlöd ezt az anyagot a borítójával és a fájljaival együtt?\n"+item.title)) return;
+              remove.disabled=true;
+              try {
+                await api(base+"/games/uploads/delete",{method:"POST",headers:{"X-Game-Key":key,"Content-Type":"application/json"},body:JSON.stringify({id:item.id,version:item.version})});
+                if(editing?.id===item.id) selectCard(null);
+                await refreshCards();
+              } catch(err){await refreshCards();note.textContent=err.message;}
+              finally {remove.disabled=false;}
+            };
+            row.append(heading,edit," ",remove); list.append(row);
+          }
+        } catch(err){note.textContent="A bejegyzések nem tölthetők be. "+err.message;}
+      }
+      refreshCards();
       form.onsubmit=async e=>{
         e.preventDefault();
-        const msg=el("gameUploadStatus"), button=form.querySelector("button");
-        button.disabled=true; msg.textContent="Feltöltés…";
+        const msg=el("gameUploadStatus"), button=save;
+        button.disabled=true; cancel.disabled=true; msg.textContent="Feltöltés…";
         try {
-          await publish(base,key,form,msg);
-          form.reset(); msg.textContent="Megjelent a játéktérben.";
-        } catch(err){msg.textContent=err.message;}
-        finally {button.disabled=false;}
+          const message=editing ? "A módosítások mentve." : "Megjelent a játéktérben.";
+          await publish(base,key,form,msg,editing);
+          selectCard(null); msg.textContent=message;
+          await refreshCards();
+        } catch(err){msg.textContent=err.message; await refreshCards();}
+        finally {button.disabled=false;cancel.disabled=false;}
       };
       try {current=(await api(base+"/games/access?key="+encodeURIComponent(key))).ids; paint(current);status.textContent="";}
       catch(e){status.textContent="A hozzáférések nem tölthetők be.";}
