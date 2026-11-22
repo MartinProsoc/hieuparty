@@ -65,7 +65,7 @@
     guest(base, query) {
       const invite = el("invite"), toggle = el("gamesToggle"), panel = el("gamesPane");
       let allowed = false, snapshot = "", serial = 0, gameReady = false;
-      const gameOrigin = "https://narancshullas.hieuparty.hu";
+      const gameOrigin = "https://hieuparty-narancshullas.puncsmartin.workers.dev";
       const inviteRoom = new URLSearchParams(location.search).get("szoba");
       let openInvitation = /^[0-9a-f]{64}$/.test(inviteRoom || "");
       function onlineCard(list) {
