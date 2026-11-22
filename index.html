@@ -2138,7 +2138,7 @@ body.calm .dm-notes text:nth-child(2){transform:translate(-8px,-16px);} body.cal
       wl.href = details.wishlistUrl; wl.style.display='inline-block';
     }
 
-    var EVENT_DATE = details.eventTimestamp ? new Date(details.eventTimestamp) : null;
+    var EVENT_DATE = new Date('2026-11-28T13:00:00+01:00');
     var EVENT_DURATION_MS = (details.eventDurationHours || 8) * 3600000;
 
     function updateReminder(){
