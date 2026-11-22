@@ -64,7 +64,28 @@
   window.partyGames = {
     guest(base, query) {
       const invite = el("invite"), toggle = el("gamesToggle"), panel = el("gamesPane");
-      let allowed = false, snapshot = "", serial = 0;
+      let allowed = false, snapshot = "", serial = 0, gameReady = false;
+      const gameOrigin = "https://narancshullas.hieuparty.hu";
+      const inviteRoom = new URLSearchParams(location.search).get("szoba");
+      let openInvitation = /^[0-9a-f]{64}$/.test(inviteRoom || "");
+      function onlineCard(list) {
+        const card = node("article", "", "game-card");
+        const button = node("button", openInvitation ? "Csatlakozás a meghívott szobához" : "Játék indítása", "gold-btn");
+        button.type = "button";
+        button.onclick = () => {
+          if (!allowed) return;
+          const form = document.createElement("form");
+          form.method = "POST"; form.action = gameOrigin + "/launch";
+          const fields = {t: new URLSearchParams(query()).get("t") || ""};
+          if (/^[0-9a-f]{64}$/.test(inviteRoom || "")) fields.room = inviteRoom;
+          for (const [name, value] of Object.entries(fields)) {
+            const input = document.createElement("input"); input.type = "hidden"; input.name = name; input.value = value; form.append(input);
+          }
+          document.body.append(form); form.submit(); form.remove();
+        };
+        card.append(node("h3","Narancshullás"),node("p","Országos társasjáték oktatókörrel, botokkal és meghívható játékosokkal."),button);
+        list.append(card);
+      }
       function select(open) {
         invite.classList.toggle("games-open", open);
         toggle.setAttribute("aria-checked",String(open));
@@ -83,10 +104,18 @@
           allowed = true;
           toggle.removeAttribute("aria-disabled");
           el("gamesHint").textContent = "";
-          const next = JSON.stringify(items);
+          if (!gameReady) {
+            try {
+              const response = await fetch(gameOrigin + "/ready", {cache:"no-store", credentials:"omit", referrerPolicy:"no-referrer", signal:AbortSignal.timeout(3500)});
+              gameReady = response.ok && await response.text() === "narancshullas-v1";
+            } catch {}
+          }
+          if (attempt !== serial) return;
+          const next = JSON.stringify([items,gameReady]);
           if (snapshot === next) return;
           const list = el("gameCards");
           list.replaceChildren();
+          if (gameReady) { onlineCard(list); if (openInvitation) select(true); }
           for (const item of items.slice().sort((a,b)=>Number(b.party)-Number(a.party))) {
             const card = node("article", "", "game-card");
             const fileUrl = id => base+"/games/file/"+encodeURIComponent(id)+"?"+query();
@@ -100,7 +129,7 @@
             }
             list.append(card);
           }
-          if (!items.length) list.append(node("p","A játékok és a szabályzatok hamarosan ide kerülnek."));
+          if (!items.length && !gameReady) list.append(node("p","A játékok és a szabályzatok hamarosan ide kerülnek."));
           snapshot = next;
         } catch {
           if (attempt !== serial) return;
